@@ -32,17 +32,17 @@
 > 2. **归档条件**：目前的实现，是通过 `find` 命令查找，若该目录下有「IDE配置、Git工程、xcode工程、Flutter工程」特有文件，则会被判定为「符合归档条件」；后续可继续扩展 以支持更多场景
 >
 > 	```shell
-> 			# 若符合「智能归档」条件，则对当前目录进行归档：IDE配置、Git工程、xcode工程、Flutter工程
-> 	    elif [ $(echo $(find $1 \
-> 	        -name ".idea" \
-> 	        -o -name ".gitignore" \
-> 	        -o -name "LICENSE" \
-> 	        -o -name "README.md" -o -name "readme.md" -o -name "README" \
-> 	        -o -name "*.git" -o -name "*.gitee" \
-> 	        -o -name "*.xcodeproj" -o -name "*.xcplugin" \
-> 	        -o -name "pubspec.yaml" \
-> 	        -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-> 	        file_archiving "$1"
+> 	# 若符合「智能归档」条件，则对当前目录进行归档：IDE配置、Git工程、xcode工程、Flutter工程
+> 	elif [ $(echo $(find $1 \
+> 	    -name ".idea" \
+> 	    -o -name ".gitignore" \
+> 	    -o -name "LICENSE" \
+> 	    -o -name "README.md" -o -name "readme.md" -o -name "README" \
+> 	    -o -name "*.git" -o -name "*.gitee" \
+> 	    -o -name "*.xcodeproj" -o -name "*.xcplugin" \
+> 	    -o -name "pubspec.yaml" \
+> 	    -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
+> 	    file_archiving "$1"
 > 	```
 
 
