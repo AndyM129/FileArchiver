@@ -45,6 +45,16 @@ $ fa -d . --list
 $ fa -d .
 ```
 
+![](https://gitee.com/andym129/ImageHosting/raw/master/images/202203161225223.png)
+
+4. 筛查、显示，执行需要的归档处理，并删除被归档的源文件
+
+```shell
+$ fa -d . --rof
+```
+
+![](https://gitee.com/andym129/ImageHosting/raw/master/images/202203161226274.png)
+
 ## Install
 
 > 注：以下内容为针对 MacOS 进行的配置&说明。
@@ -82,8 +92,8 @@ $ fa -d .
 ## UpdateLog
 
 ### 2022/03/15: v1.0.0
-
-* 实现核心功能开发，包括：目录的递归遍历、工程文件的识别、彩色日志的输出
+* 实现核心功能开发，包括：目录的递归遍历、工程文件的识别&归档、彩色日志的输出
+* 支持参数控制 以删除被归档的源文件
 * 补充使用说明 及文档
 
 

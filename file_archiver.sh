@@ -10,7 +10,8 @@ readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
 ### 2022/03/15: v1.0.0
-* 实现核心功能开发，包括：目录的递归遍历、工程文件的识别、彩色日志的输出
+* 实现核心功能开发，包括：目录的递归遍历、工程文件的识别&归档、彩色日志的输出
+* 支持参数控制 以删除被归档的源文件
 * 补充使用说明 及文档
 '''
 
@@ -55,6 +56,7 @@ help() {
     echoInfo
     echoInfo "Options:"
     echoInfo "\t--list:\t\t仅筛查、显示可能的归档处理（若无该选项，则直接进行智能归档）"
+    echoInfo "\t--rof:\t\t即\"RemoveOriginalFile\"，删除被归档的源文件"
     echoInfo "\t--updatelog:\t脚本的更新日志"
     echoInfo "\t--version:\t当前脚本版本"
     echoInfo "\t--help:\t\t查看使用说明"
@@ -83,7 +85,7 @@ process() {
     file_archiver_in_path $@
     echoInfo "\`\`\`"
     echoSuccess
-    echoSuccess "智能归档完成 !"
+    if [ $rof ]; then echoInfo "✅ 智能归档已完成，并删除了相关源文件！"; else echoInfo "✅ 智能归档已完成！"; fi
     echoSuccess
     exit 0
 }
@@ -135,8 +137,19 @@ function file_archiving() {
         return
     fi
 
+    # 若目标文件已存在，则直接返回
+    if [[ -e "${1}_fa${DATE_STAMP}.zip" ]]; then
+        return
+    fi
+
     # 准备归档
-    echoSuccess "🗃  $1 ==> ${1}_${DATE_STAMP}.zip"
+    echoSuccess "🗃  $1 ==> ${1}_fa${DATE_STAMP}.zip"
+    zip -qr "${1}_fa${DATE_STAMP}" "$1" || echo "文件压缩失败($?)"
+
+    # 按需删除源文件
+    if [ $rof ]; then
+        rm -rf "$1"
+    fi
 }
 
 # =========================================== MAIN ===========================================
