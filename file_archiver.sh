@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 
 # =========================================== COPYRIGHT ===========================================
-readonly SCRIPT_NAME="file_archiver.sh"                           # 脚本名称
-readonly SCRIPT_DESC="文件归档工具"                         # 脚本名称
-readonly SCRIPT_VERSION="1.0.0"                                   # 脚本版本
-readonly SCRIPT_UPDATETIME="2022/03/14"                           # 最近的更新时间
-readonly AUTHER_NAME="MengXinxin"                                 # 作者
-readonly AUTHER_EMAIL="andy_m129@163.com"                         # 作者邮箱
-readonly REAMDME_URL="https://github.com/AndyM129/ShellScriptTpl" # 说明文档
+readonly SCRIPT_NAME="file_archiver.sh"                         # 脚本名称
+readonly SCRIPT_DESC="文件归档工具"                       # 脚本名称
+readonly SCRIPT_VERSION="1.0.0"                                 # 脚本版本
+readonly SCRIPT_UPDATETIME="2022/03/14"                         # 最近的更新时间
+readonly AUTHER_NAME="MengXinxin"                               # 作者
+readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
+readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/15: v1.0.0
+* 实现核心功能开发，包括：目录的递归遍历、工程文件的识别、彩色日志的输出
+* 补充使用说明 及文档
 '''
 
 # =========================================== GLOBAL CONST ===========================================
@@ -36,6 +39,7 @@ echoFatal() { echo "\033[5;31m$@\033[0m"; }                                     
 
 # =========================================== HELP ===========================================
 help() {
+    echoInfo
     echoInfo "脚本名称: $SCRIPT_NAME"
     echoInfo "功能简介: $SCRIPT_DESC"
     echoInfo "当前版本: $SCRIPT_VERSION"
@@ -47,36 +51,37 @@ help() {
     echoInfo
     echoInfo "Usage:"
     echoInfo
-    echoInfo "\t\$ sh $SCRIPT_NAME [-dvh] [command] [params...] [--Option [value] [-sub_option [value]]...]..."
-    echoInfo
-    echoInfo "Commands:"
-    echoInfo "\tcommand1:\t命令1"
-    echoInfo "\tcommand2:\t命令2"
+    echoInfo "\t\$ sh $SCRIPT_NAME [-dvh] <path> [--Option [value] [-sub_option [value]]...]..."
     echoInfo
     echoInfo "Options:"
-    echoInfo "\t--opt1:\t\t选项1"
-    echoInfo "\t--opt2:\t\t选项2"
+    echoInfo "\t--list:\t\t仅筛查、显示可能的归档处理（若无该选项，则直接进行智能归档）"
     echoInfo "\t--updatelog:\t脚本的更新日志"
     echoInfo "\t--version:\t当前脚本版本"
     echoInfo "\t--help:\t\t查看使用说明"
     echoInfo
-    echoInfo "SubOptions:"
-    echoInfo "\t-sub_opt1:\t子选项1"
-    echoInfo "\t-sub_opt2:\t子选项2"
+    #    echoInfo "SubOptions:"
+    #    echoInfo "\t-sub_opt1:\t子选项1"
+    #    echoInfo "\t-sub_opt2:\t子选项2"
+    echoInfo
 }
 
 # =========================================== PROCESS ===========================================
 
 process() {
+    echoInfo
+    echoInfo "# 文件归档工具"
+    echoInfo
+    if [ $list ]; then echoInfo "## 开始筛查 并显示可能的归档处理..."; else echoInfo "## 开始处理..."; fi
+    echoInfo
     echoInfo "> 注释："
     echoDebug "> 📃 表示「普通文件」"
     echoInfo "> 📂 表示「普通文件夹」"
     echoSuccess "> 🗃  表示「待归档文件夹」"
     echoWarn "> 🗄  表示「已归档文件」"
     echoInfo
-    echoInfo "开始处理..."
-    echoInfo
+    echoInfo "\`\`\`shell"
     file_archiver_in_path $@
+    echoInfo "\`\`\`"
     echoSuccess
     echoSuccess "智能归档完成 !"
     echoSuccess
@@ -99,7 +104,7 @@ function file_archiver_in_path() {
         -o -name "*.xcodeproj" -o -name "*.xcplugin" \
         -o -name "pubspec.yaml" \
         -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-        echoSuccess "🗃  $1"
+        file_archiving "$1"
 
     # 若「没有目录」则不再遍历其中的文件
     elif [ $(echo $(find $1 -type d -maxdepth 1 | wc -l) | sed 's/ //g') -le 1 ]; then
@@ -120,6 +125,18 @@ function file_archiver_in_path() {
             file_archiver_in_path "$1/$file"
         done
     fi
+}
+
+# 执行归档
+function file_archiving() {
+    # 若只是显示列表，则输出后 返回
+    if [ $list ]; then
+        echoSuccess "🗃  $1"
+        return
+    fi
+
+    # 准备归档
+    echoSuccess "🗃  $1 ==> ${1}_${DATE_STAMP}.zip"
 }
 
 # =========================================== MAIN ===========================================
@@ -229,6 +246,12 @@ main() {
     fi
     if [ $updatelog ]; then
         echoInfo "$SCRIPT_UPDATE_LOG"
+        exit 0
+    fi
+
+    # 必要参数校验：path
+    if [ -z ${commandParams[0]} ]; then
+        help
         exit 0
     fi
 
