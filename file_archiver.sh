@@ -122,7 +122,7 @@ process() {
 
     # cd 到对应的路径，执行处理
     echoInfo "\`\`\`shell"
-    file_archiver_in_path "$(dirname $fromPath)" "$(basename $fromPath)"
+    file_archiver_in_path "$(dirname $fromPath)" "$(basename $fromPath)" "$fromPath"
     echoInfo "\`\`\`"
     echoInfo
 
@@ -138,32 +138,32 @@ process() {
     exit 0
 }
 
-# 对传入的目录 进行智能归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
+# 对传入的目录 进行智能归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
 function file_archiver_in_path() {
     # 若需要忽略，则仅输出提示
-    if [[ "$2" == *".photoslibrary" ]]; then
-        echoIgnore "🏞  $1/$2"
+    if [[ "$3" == *".photoslibrary" ]]; then
+        echoIgnore "🏞  $3"
 
     # 若是文件，则先按需创建目标目录 并复制到该目录，再按需删除原文件
-    elif [ -f "$1/$2" ]; then
+    elif [ -f "$3" ]; then
         # 无需创建目录
         if [ $fromPath == $toPath ]; then
-            echoFile "📃 $1"
+            echoFile "📃 $3"
 
         # 需要创建目标目录
         else
-            echoFile "📃 $1/$2 ➡️  ${1/$fromPath/$toPath}/$2"
+            echoFile "📃 $3 ➡️  ${3/$fromPath/$toPath}"
 
             # 按需移动
             if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-                if [ ! -e "${1/$fromPath/$toPath}" ]; then
-                    mkdir -p "${1/$fromPath/$toPath}" || ! echoFatal "目录创建失败($?)：${1/$fromPath/$toPath}" || exit 1
+                if [ ! -e "$(dirname "${3/$fromPath/$toPath}")" ]; then
+                    mkdir -p "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "目录创建失败($?)：$(dirname "${3/$fromPath/$toPath}")" || exit 1
                 fi
-                cp "$1/$2" "${1/$fromPath/$toPath}" || ! echoFatal "文件移动失败($?)：$1/$2 => ${1/$fromPath/$toPath}/$2" || exit 1
+                cp "$3" "${3/$fromPath/$toPath}" || ! echoFatal "文件移动失败($?)：$3 => ${3/$fromPath/$toPath}" || exit 1
 
                 # 按需删除源文件（若文件夹为空 则删除文件夹）
                 if [ $rof ]; then
-                    rm -rf "$1/$2"
+                    rm -rf "$3"
 
                     if [ $(echo $(ls -l $1 | wc -l) | sed 's/ //g') -le 1 ];then
                         rm -rf "$1"
@@ -172,14 +172,23 @@ function file_archiver_in_path() {
             fi
         fi
 
-
-    # 若是文件夹，且符合归档条件，则先就地归档，并按需删除原文件；再按需创建目标目录 并复制到该目录，再按需删除原压缩文件
+    # 若是文件夹，且符合「智能归档」条件，则对当前目录先就地归档，并按需删除原文件；再按需创建目标目录 并复制到该目录，再按需删除原压缩文件
+    elif [ $(echo $(find "$1/$2" \
+        -name ".idea" \
+        -o -name ".gitignore" \
+        -o -name "LICENSE" \
+        -o -name "README.md" -o -name "readme.md" -o -name "README" \
+        -o -name "*.git" -o -name "*.gitee" \
+        -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
+        -o -name "pubspec.yaml" \
+        -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
+        echoZipping "📃 $1/$2 ➡️  ${1/$fromPath/$toPath}/$2_fa${DATE_STAMP}.zip"
 
     # 否则 递归处理当前目录下的子文件
     else
-        echoDir "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
-        for file in $(ls "$1/$2"); do
-            file_archiver_in_path "$1/$2" "$file"
+        echoDir "📂 $3    —— 其中有文件夹$(echo $(find "$3" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$3" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
+        for file in $(ls "$3"); do
+            file_archiver_in_path "$1/$2" "$file" "$1/$2/$file"
         done
     fi
 
