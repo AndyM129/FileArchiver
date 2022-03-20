@@ -211,9 +211,34 @@ function file_archiver_in_path() {
             remove_empty_dir "$1"
         fi
 
+    # 空文件夹：按需备份，按需删除
+    elif [ $(echo $(ls -l "$3" | wc -l) | sed 's/ //g') -le 1 ]; then
+        # 无需创建目录
+        if [ $fromPath == $toPath ]; then
+            echoDir "📂 $3"
+
+        # 需要创建目标目录
+        else
+            echoDir "📂 $3 ➡️  ${3/$fromPath/$toPath}"
+
+            # 按需移动
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                if [ ! -e "$(dirname "${3/$fromPath/$toPath}")" ]; then
+                    mkdir -p "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "目录创建失败($?)：$(dirname "${3/$fromPath/$toPath}")" || exit 1
+                fi
+                cp -r "$3" "${3/$fromPath/$toPath}" || ! echoFatal "文件夹移动失败($?)：$3 => ${3/$fromPath/$toPath}" || exit 1
+
+                # 按需删除源文件（若文件夹为空 则删除文件夹）
+                if [ $rof ]; then
+                    rm -rf "$3"
+                    remove_empty_dir "$1"
+                fi
+            fi
+        fi
+
     # 否则 递归处理当前目录下的子文件
     else
-        echoDir "📂 $3    —— 其中有文件夹$(echo $(find "$3" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$3" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
+        echoDir "📂 $3"
         for file in $(ls "$3"); do
             file_archiver_in_path "$1/$2" "$file" "$1/$2/$file"
         done
