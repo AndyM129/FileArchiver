@@ -182,7 +182,33 @@ function file_archiver_in_path() {
         -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
         -o -name "pubspec.yaml" \
         -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-        echoZipping "📃 $1/$2 ➡️  ${1/$fromPath/$toPath}/$2_fa${DATE_STAMP}.zip"
+        echoZipping "🗃  $3 ➡️  ${3/$fromPath/$toPath}_fa${DATE_STAMP}.zip"
+
+        # 归档文件夹
+        if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+            # 前往对应的目录
+            cd "$1" || ! echo "前往目录失败($?)：$1" || exit 1
+
+            # 就地进行归档
+            zip -qr "${2}_fa${DATE_STAMP}.zip" "$2" || ! echo "文件压缩失败($?)：$2" || exit 1
+
+            # 按需删除源文件
+            if [ $rof ]; then
+                rm -rf "$2"
+            fi
+
+            # 按需移动
+            if [ ! -e "$(dirname "${3/$fromPath/$toPath}")" ]; then
+                mkdir -p "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "目录创建失败($?)：$(dirname "${3/$fromPath/$toPath}")" || exit 1
+            fi
+            cp "${2}_fa${DATE_STAMP}.zip" "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "文件移动失败($?)：${2}_fa${DATE_STAMP}.zip => $(dirname "${3/$fromPath/$toPath}")" || exit 1
+            rm -rf "${2}_fa${DATE_STAMP}.zip"
+
+            # 按需删除源文件（若文件夹为空 则删除文件夹）
+            if [ $(echo $(ls -l $1 | wc -l) | sed 's/ //g') -le 1 ];then
+                rm -rf "$1"
+            fi
+        fi
 
     # 否则 递归处理当前目录下的子文件
     else
