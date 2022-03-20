@@ -218,44 +218,6 @@ function file_archiver_in_path() {
             file_archiver_in_path "$1/$2" "$file" "$1/$2/$file"
         done
     fi
-
-    #    # 若传入的普通文件
-    #    if [ -f "$1/$2" ]; then
-    #        move_file "$1/$2" "${1/fromPath/toPath}"
-    #
-    #    # 若符合「智能归档」条件，则对当前目录进行归档、移动：IDE配置、Git工程、xcode工程、Flutter工程
-    #    elif [ $(echo $(find "$1/$2" \
-    #        -name ".idea" \
-    #        -o -name ".gitignore" \
-    #        -o -name "LICENSE" \
-    #        -o -name "README.md" -o -name "readme.md" -o -name "README" \
-    #        -o -name "*.git" -o -name "*.gitee" \
-    #        -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
-    #        -o -name "pubspec.yaml" \
-    #        -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-    #        file_archiving $@
-    #
-    #    # 若符合「忽略归档」的条件，则对当前目录直接跳过：照片图库
-    #    elif [[ "$2" == *".photoslibrary" ]]; then
-    #        echoIgnore "🏞  $1/$2"
-    #
-    #    # 否则遍历其下的文件，并对目录文件 进行递归处理
-    #    else
-    #        echoDir "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
-    #        for file in $(ls "$1/$2"); do
-    #            if [ -f "$1/$2/$file" ]; then
-    #                file="$1/$2/$file"
-    #                #                echoDebug "file = $file"
-    #                #                echoDebug "fromPath = $fromPath"
-    #                #                echoDebug "toPath = $toPath"
-    #                #                echoDebug "toPath => ${file/$fromPath/$toPath}"
-    #                #                exit ;
-    #                move_file "$file" "${file/$fromPath/$toPath}"
-    #            else
-    #                file_archiver_in_path "$1/$2" "$file"
-    #            fi
-    #        done
-    #    fi
 }
 
 # 删除空文件夹：$1 目录的完整路径
@@ -268,7 +230,7 @@ function remove_empty_dir() {
 
         # 若是空目录，则删除
         if [ $(echo $(ls -l "$dir" | wc -l) | sed 's/ //g') -le 1 ]; then
-            echoDebug "删除 $dir"
+            echoDebug "🗑  $dir"
             rm -r "$dir"
             dir=$(dirname "$dir")
             continue;
@@ -278,97 +240,6 @@ function remove_empty_dir() {
         break;
     done
 }
-
-
-## 执行归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
-#function file_archiving() {
-#    echoZipping "🗃  $1/$2 ➡️  ${2}_fa${DATE_STAMP}.zip"
-#
-#    # 归档文件
-#    if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-#        # 前往对应的目录
-#        cd "$1"
-#        if [ $? -gt 0 ]; then
-#            echoError "前往目录失败($?)：$1"
-#
-#        # 进行归档
-#        else
-#            zip -qr "${2}_fa${DATE_STAMP}" "$2"
-#
-#            if [ $? -gt 0 ]; then
-#                echoError "文件压缩失败($?)"
-#
-#            # 按需删除源文件
-#            elif [ $rof ]; then
-#                rm -rf "$2"
-#            fi
-#        fi
-#    fi
-#}
-#
-## 按需移动文件：$1 源文件的完整路径，$2 目标文件夹的完整路径
-#function move_file() {
-#    # 若源文件是目录
-#    if [ -d "$1" ]; then
-#        if [ $fromPath == $toPath ]; then
-#            echoDir "📂 $1    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
-#        else
-#            echoDir "📂 $1 ➡️  $2"
-#
-#            # 按需移动
-#            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-#                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
-#
-#                # 按需删除源文件
-#                if [ $rof ]; then
-#                    rm -rf "$1"
-#                fi
-#            fi
-#        fi
-#
-#    # 若源文件是压缩包
-#    elif [[ "$1" == *".zip" ]] || [[ "$1" == *".tar"* ]]; then
-#        if [ $fromPath == $toPath ]; then
-#            echoZipped "🗄  $1"
-#        else
-#            echoZipped "🗄  $1 ➡️  $2/$(basename $1)"
-#
-#            # 按需移动
-#            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-#                if [ ! -e "$2" ]; then
-#                    mkdir -p "$2" || ! echoFatal "目录创建失败($?)：$2" || exit 1
-#                fi
-#                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
-#
-#                # 按需删除源文件
-#                if [ $rof ]; then
-#                    rm -rf "$1"
-#                fi
-#            fi
-#        fi
-#
-#    # 源文件是普通文件
-#    else
-#        if [ $fromPath == $toPath ]; then
-#            echoFile "📃 $1"
-#        else
-#            echoFile "📃 $1 ➡️  $2/$(basename $1)"
-#
-#            # 按需移动
-#            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-#                if [ ! -e "$2" ]; then
-#                    mkdir -p "$2" || ! echoFatal "目录创建失败($?)：$2" || exit 1
-#                fi
-#                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
-#
-#                # 按需删除源文件
-#                if [ $rof ]; then
-#                    rm -rf "$1"
-#                fi
-#            fi
-#        fi
-#    fi
-#}
 
 # =========================================== MAIN ===========================================
 
