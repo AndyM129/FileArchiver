@@ -9,10 +9,14 @@ readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/20: v1.0.1
+* 修复「压缩文件解压后 带有路径」的问题
+
 ### 2022/03/15: v1.0.0
 * 实现核心功能开发，包括：目录的递归遍历、工程文件的识别&归档、彩色日志的输出
 * 支持参数控制 以删除被归档的源文件
 * 补充使用说明 及文档
+
 '''
 
 # =========================================== GLOBAL CONST ===========================================
