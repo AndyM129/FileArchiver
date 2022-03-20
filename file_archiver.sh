@@ -3,12 +3,15 @@
 # =========================================== COPYRIGHT ===========================================
 readonly SCRIPT_NAME="file_archiver.sh"                         # 脚本名称
 readonly SCRIPT_DESC="文件归档工具"                       # 脚本名称
-readonly SCRIPT_VERSION="1.0.1"                                 # 脚本版本
+readonly SCRIPT_VERSION="1.1.0"                                 # 脚本版本
 readonly SCRIPT_UPDATETIME="2022/03/14"                         # 最近的更新时间
 readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/20: v1.1.0
+* 支持智能归档后 备份至指定路径
+
 ### 2022/03/20: v1.0.1
 * 修复「压缩文件解压后 带有路径」的问题
 
@@ -42,7 +45,12 @@ echoSuccess() { echo "\033[1;32m$@\033[0m"; }                                   
 echoWarn() { echo "\033[1;33m$@\033[0m"; }                                                     # warn, 可修复，系统可继续运行下去；
 echoError() { echo "\033[1;31m$@\033[0m"; }                                                    # error, 可修复性，但无法确定系统会正常的工作下去;
 echoFatal() { echo "\033[1;31m$@\033[0m"; }                                                    # fatal, 相当严重，可以肯定这种错误已经无法修复，并且如果系统继续运行下去的话后果严重。
-echoInfoWithBg() { echo "\033[1;46;30m$@\033[0m"; }                                            # info  重要，输出信息：用来反馈系统的当前状态给最终用户的；
+
+echoFile() { echo "$@"; }                           # 普通文件
+echoDir() { echo "\033[1;36m$@\033[0m"; }           # 普通文件夹
+echoSpecialDir() { echo "\033[1;46;30m$@\033[0m"; } # 特殊文件夹
+echoZipping() { echo "\033[1;33m$@\033[0m"; }       # 待压缩文件夹
+echoZipped() { echo "\033[1;43;30m$@\033[0m"; }     # 已压缩文件夹
 
 # =========================================== HELP ===========================================
 help() {
@@ -74,7 +82,7 @@ help() {
     echoInfo
 }
 
-# =========================================== PROCESS ===========================================
+# =========================================== PROCESS ===¬========================================
 
 process() {
     # 大标题
@@ -92,48 +100,58 @@ process() {
     fi
     echoInfo
 
+    #    # 异常处理：若传入的不是目录 则直接返回
+    #    if [ -f "$*" ]; then
+    #        echoFatal "📃 单纯的文件不需要归档：$* "
+    #        echoFatal
+    #        exit 0
+    #    fi
+
     # 输出说明
     echoInfo "> 注释："
-    echoDebug "> 📃 表示「普通文件」"
-    echoInfo "> 📂 表示「普通文件夹」"
-    echoSuccess "> 🗃  表示「待归档文件夹」"
-    echoWarn "> 🗄  表示「已归档文件」"
+    echoFile "> 📃 表示「普通文件」"
+    echoDir "> 📂 表示「普通文件夹」"
+    echoSpecialDir "> 📂 表示「特殊文件夹」，将被忽略归档"
+    echoZipping "> 🗃  表示「待归档文件夹」"
+    echoZipped "> 🗄  表示「已归档文件」"
     echoInfo
 
-    # 异常处理：若传入的不是目录 则直接返回
-    if [ -f "$*" ]; then
-        echoFatal "📃 单纯的文件不需要归档：$* "
-        echoFatal
-        exit 0
-    fi
+    # 获取原路径 的完整路径
+    cd $1 || ! echoFatal "前往目录失败($?)：$1" || exit 1
+    fromPath=$(pwd)
+    echoInfo "归档文件夹：$fromPath"
+
+    # 获取目标路径 的完整路径
+    cd ${toPath:=$1} || ! echoFatal "前往目录失败($?)：$toPath" || exit 1
+    toPath=$(pwd)
+    echoInfo "  到文件夹：$toPath"
+    echoInfo
 
     # cd 到对应的路径，执行处理
-    cd $1 || ! echoFatal "前往目录失败($?)：$1" || exit 1
     echoInfo "\`\`\`shell"
-    file_archiver_in_path "$(dirname $(pwd))" "$(basename $(pwd))"
+    file_archiver_in_path "$(dirname $fromPath)" "$(basename $fromPath)"
     echoInfo "\`\`\`"
     echoInfo
 
     # 执行结束
     if [ $sof ]; then
-        echoInfo "✅ 智能归档已完成，并保留了相关源文件！"
+        echoSuccess "✅ 智能归档已完成，并保留了相关源文件！"
     elif [ $rof ]; then
-        echoInfo "✅ 智能归档已完成，并删除了相关源文件！"
+        echoSuccess "✅ 智能归档已完成，并删除了相关源文件！"
     else
-        echoInfo "✅ 智能归档已完成筛查，并显示可能的归档处理！"
+        echoSuccess "✅ 智能归档已完成筛查，并显示可能的归档处理！"
     fi
     echoSuccess
     exit 0
 }
 
-# 对传入的目录 进行智能归档：dirname=$1，basename=$2
-# echoWarn "file_archiver_in_path: dirname=$1, basename=$2"
+# 对传入的目录 进行智能归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
 function file_archiver_in_path() {
-    # 若传入的不是目录 则直接返回
+    # 若传入的普通文件
     if [ -f "$1/$2" ]; then
-        echoWarn "📃 单纯的文件不需要归档：$1/$2 "
+        move_file "$1/$2" "${1/fromPath/toPath}"
 
-    # 若符合「智能归档」条件，则对当前目录进行归档：IDE配置、Git工程、xcode工程、Flutter工程
+    # 若符合「智能归档」条件，则对当前目录进行归档、移动：IDE配置、Git工程、xcode工程、Flutter工程
     elif [ $(echo $(find "$1/$2" \
         -name ".idea" \
         -o -name ".gitignore" \
@@ -147,46 +165,37 @@ function file_archiver_in_path() {
 
     # 若符合「忽略归档」的条件，则对当前目录直接跳过：照片图库
     elif [[ "$2" == *".photoslibrary" ]]; then
-        echoInfoWithBg "🏞  $1/$2"
-
-    # 若「没有目录」则不再遍历其中的文件
-    elif [ $(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g') -le 1 ]; then
-        echoInfo "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
-        exit
+        echoSpecialDir "🏞  $1/$2"
 
     # 否则遍历其下的文件，并对目录文件 进行递归处理
     else
-        echoInfo "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
+        echoDir "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
         for file in $(ls "$1/$2"); do
             if [ -f "$1/$2/$file" ]; then
-                if [[ "$file" == *".zip" ]] || [[ "$file" == *".tar"* ]]; then
-                    echoWarn "🗄  $1/$2/$file"
-                else
-                    echoDebug "📃 $1/$2/$file"
-                fi
-                continue
+                file="$1/$2/$file"
+#                echoDebug "file = $file"
+#                echoDebug "fromPath = $fromPath"
+#                echoDebug "toPath = $toPath"
+#                echoDebug "toPath => ${file/$fromPath/$toPath}"
+#                exit ;
+                move_file "$file" "${file/$fromPath/$toPath}"
+            else
+                file_archiver_in_path "$1/$2" "$file"
             fi
-            file_archiver_in_path "$1/$2" "$file"
         done
     fi
 }
 
-# 执行归档
-# echoWarn "file_archiving: dirname=$1, basename=$2"
+# 执行归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
 function file_archiving() {
-    echoSuccess "🗃  $1/$2 ➡️  ${2}_fa${DATE_STAMP}.zip"
-
-    # 若目标文件已存在，则直接返回
-    if [[ -e "${1}/${2}_fa${DATE_STAMP}.zip" ]]; then
-        return
-    fi
+    echoZipping "🗃  $1/$2 ➡️  ${2}_fa${DATE_STAMP}.zip"
 
     # 归档文件
     if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
         # 前往对应的目录
         cd "$1"
         if [ $? -gt 0 ]; then
-            echo "前往目录失败($?)：$1"
+            echoError "前往目录失败($?)：$1"
 
         # 进行归档
         else
@@ -198,6 +207,70 @@ function file_archiving() {
             # 按需删除源文件
             elif [ $rof ]; then
                 rm -rf "$2"
+            fi
+        fi
+    fi
+}
+
+# 按需移动文件：$1 源文件的完整路径，$2 目标文件夹的完整路径
+function move_file() {
+    # 若源文件是目录
+    if [ -d "$1" ]; then
+        if [ $fromPath == $toPath ]; then
+            echoDir "📂 $1    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
+        else
+            echoDir "📂 $1 ➡️  $2"
+
+            # 按需移动
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
+
+                # 按需删除源文件
+                if [ $rof ]; then
+                    rm -rf "$1"
+                fi
+            fi
+        fi
+
+    # 若源文件是压缩包
+    elif [[ "$1" == *".zip" ]] || [[ "$1" == *".tar"* ]]; then
+        if [ $fromPath == $toPath ]; then
+            echoZipped "🗄  $1"
+        else
+            echoZipped "🗄  $1 ➡️  $2/$(basename $1)"
+
+            # 按需移动
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                if [ ! -e "$2" ]; then
+                    mkdir -p "$2" || ! echoFatal "目录创建失败($?)：$2" || exit 1
+                fi
+                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
+
+                # 按需删除源文件
+                if [ $rof ]; then
+                    rm -rf "$1"
+                fi
+            fi
+        fi
+
+    # 源文件是普通文件
+    else
+        if [ $fromPath == $toPath ]; then
+            echoFile "📃 $1"
+        else
+            echoFile "📃 $1 ➡️  $2/$(basename $1)"
+
+            # 按需移动
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                if [ ! -e "$2" ]; then
+                    mkdir -p "$2" || ! echoFatal "目录创建失败($?)：$2" || exit 1
+                fi
+                cp -r "$1" "$2" || ! echoFatal "文件移动失败($?)：$1 => $2" || exit 1
+
+                # 按需删除源文件
+                if [ $rof ]; then
+                    rm -rf "$1"
+                fi
             fi
         fi
     fi

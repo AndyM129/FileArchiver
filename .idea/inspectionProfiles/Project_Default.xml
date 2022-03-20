@@ -2,7 +2,7 @@
   <profile version="1.0">
     <option name="myName" value="Project Default" />
     <inspection_tool class="ShellCheck" enabled="true" level="ERROR" enabled_by_default="true">
-      <shellcheck_settings value="SC2001,SC2004,SC2005,SC2006,SC2007,SC2016,SC2045,SC2046,SC2068,SC2086,SC2089,SC2145,SC2219" />
+      <shellcheck_settings value="SC2001,SC2004,SC2005,SC2006,SC2007,SC2016,SC2045,SC2046,SC2068,SC2086,SC2089,SC2145,SC2164,SC2181,SC2219" />
     </inspection_tool>
   </profile>
 </component>
