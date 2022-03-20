@@ -46,11 +46,11 @@ echoWarn() { echo "\033[1;33m$@\033[0m"; }                                      
 echoError() { echo "\033[1;31m$@\033[0m"; }                                                    # error, 可修复性，但无法确定系统会正常的工作下去;
 echoFatal() { echo "\033[1;31m$@\033[0m"; }                                                    # fatal, 相当严重，可以肯定这种错误已经无法修复，并且如果系统继续运行下去的话后果严重。
 
-echoFile() { echo "$@"; }                           # 普通文件
-echoDir() { echo "\033[1;36m$@\033[0m"; }           # 普通文件夹
-echoSpecialDir() { echo "\033[1;46;30m$@\033[0m"; } # 特殊文件夹
-echoZipping() { echo "\033[1;33m$@\033[0m"; }       # 待压缩文件夹
-echoZipped() { echo "\033[1;43;30m$@\033[0m"; }     # 已压缩文件夹
+echoFile() { echo "$@"; }                       # 普通文件
+echoDir() { echo "\033[1;36m$@\033[0m"; }       # 普通文件夹
+echoIgnore() { echo "\033[1;7m$@\033[0m"; }     # 被忽略文件
+echoZipping() { echo "\033[1;33m$@\033[0m"; }   # 待压缩文件夹
+echoZipped() { echo "\033[1;43;30m$@\033[0m"; } # 已压缩文件夹
 
 # =========================================== HELP ===========================================
 help() {
@@ -100,18 +100,11 @@ process() {
     fi
     echoInfo
 
-    #    # 异常处理：若传入的不是目录 则直接返回
-    #    if [ -f "$*" ]; then
-    #        echoFatal "📃 单纯的文件不需要归档：$* "
-    #        echoFatal
-    #        exit 0
-    #    fi
-
     # 输出说明
     echoInfo "> 注释："
     echoFile "> 📃 表示「普通文件」"
     echoDir "> 📂 表示「普通文件夹」"
-    echoSpecialDir "> 📂 表示「特殊文件夹」，将被忽略归档"
+    echoIgnore "> 📂 表示「特殊文件夹」，将被忽略归档"
     echoZipping "> 🗃  表示「待归档文件夹」"
     echoZipped "> 🗄  表示「已归档文件」"
     echoInfo
@@ -147,43 +140,86 @@ process() {
 
 # 对传入的目录 进行智能归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
 function file_archiver_in_path() {
-    # 若传入的普通文件
-    if [ -f "$1/$2" ]; then
-        move_file "$1/$2" "${1/fromPath/toPath}"
+    # 若需要忽略，则仅输出提示
+    if [[ "$2" == *".photoslibrary" ]]; then
+        echoIgnore "🏞  $1/$2"
 
-    # 若符合「智能归档」条件，则对当前目录进行归档、移动：IDE配置、Git工程、xcode工程、Flutter工程
-    elif [ $(echo $(find "$1/$2" \
-        -name ".idea" \
-        -o -name ".gitignore" \
-        -o -name "LICENSE" \
-        -o -name "README.md" -o -name "readme.md" -o -name "README" \
-        -o -name "*.git" -o -name "*.gitee" \
-        -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
-        -o -name "pubspec.yaml" \
-        -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-        file_archiving $@
+    # 若是文件，则先按需创建目标目录 并复制到该目录，再按需删除原文件
+    elif [ -f "$1/$2" ]; then
+        # 无需创建目录
+        if [ $fromPath == $toPath ]; then
+            echoFile "📃 $1"
 
-    # 若符合「忽略归档」的条件，则对当前目录直接跳过：照片图库
-    elif [[ "$2" == *".photoslibrary" ]]; then
-        echoSpecialDir "🏞  $1/$2"
+        # 需要创建目标目录
+        else
+            echoFile "📃 $1/$2 ➡️  ${1/$fromPath/$toPath}/$2"
 
-    # 否则遍历其下的文件，并对目录文件 进行递归处理
+            # 按需移动
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                if [ ! -e "${1/$fromPath/$toPath}" ]; then
+                    mkdir -p "${1/$fromPath/$toPath}" || ! echoFatal "目录创建失败($?)：${1/$fromPath/$toPath}" || exit 1
+                fi
+                cp "$1/$2" "${1/$fromPath/$toPath}" || ! echoFatal "文件移动失败($?)：$1/$2 => ${1/$fromPath/$toPath}/$2" || exit 1
+
+                # 按需删除源文件（若文件夹为空 则删除文件夹）
+                if [ $rof ]; then
+                    rm -rf "$1/$2"
+
+                    if [ $(echo $(ls -l $1 | wc -l) | sed 's/ //g') -le 1 ];then
+                        rm -rf "$1"
+                    fi
+                fi
+            fi
+        fi
+
+
+    # 若是文件夹，且符合归档条件，则先就地归档，并按需删除原文件；再按需创建目标目录 并复制到该目录，再按需删除原压缩文件
+
+    # 否则 递归处理当前目录下的子文件
     else
         echoDir "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
         for file in $(ls "$1/$2"); do
-            if [ -f "$1/$2/$file" ]; then
-                file="$1/$2/$file"
-#                echoDebug "file = $file"
-#                echoDebug "fromPath = $fromPath"
-#                echoDebug "toPath = $toPath"
-#                echoDebug "toPath => ${file/$fromPath/$toPath}"
-#                exit ;
-                move_file "$file" "${file/$fromPath/$toPath}"
-            else
-                file_archiver_in_path "$1/$2" "$file"
-            fi
+            file_archiver_in_path "$1/$2" "$file"
         done
     fi
+
+#    # 若传入的普通文件
+#    if [ -f "$1/$2" ]; then
+#        move_file "$1/$2" "${1/fromPath/toPath}"
+#
+#    # 若符合「智能归档」条件，则对当前目录进行归档、移动：IDE配置、Git工程、xcode工程、Flutter工程
+#    elif [ $(echo $(find "$1/$2" \
+#        -name ".idea" \
+#        -o -name ".gitignore" \
+#        -o -name "LICENSE" \
+#        -o -name "README.md" -o -name "readme.md" -o -name "README" \
+#        -o -name "*.git" -o -name "*.gitee" \
+#        -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
+#        -o -name "pubspec.yaml" \
+#        -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
+#        file_archiving $@
+#
+#    # 若符合「忽略归档」的条件，则对当前目录直接跳过：照片图库
+#    elif [[ "$2" == *".photoslibrary" ]]; then
+#        echoIgnore "🏞  $1/$2"
+#
+#    # 否则遍历其下的文件，并对目录文件 进行递归处理
+#    else
+#        echoDir "📂 $1/$2    —— 其中有文件夹$(echo $(find "$1/$2" -type d -maxdepth 1 | wc -l) | sed 's/ //g')个 + 文件$(echo $(find "$1/$2" -type f -maxdepth 1 | wc -l) | sed 's/ //g')个"
+#        for file in $(ls "$1/$2"); do
+#            if [ -f "$1/$2/$file" ]; then
+#                file="$1/$2/$file"
+#                #                echoDebug "file = $file"
+#                #                echoDebug "fromPath = $fromPath"
+#                #                echoDebug "toPath = $toPath"
+#                #                echoDebug "toPath => ${file/$fromPath/$toPath}"
+#                #                exit ;
+#                move_file "$file" "${file/$fromPath/$toPath}"
+#            else
+#                file_archiver_in_path "$1/$2" "$file"
+#            fi
+#        done
+#    fi
 }
 
 # 执行归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename）
