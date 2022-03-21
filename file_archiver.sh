@@ -157,9 +157,9 @@ function file_archiver_in_path() {
         # 需要创建目标目录
         else
             if [[ "$1" == *".zip" ]] || [[ "$1" == *".tar"* ]]; then
-                echoFile "📃 $3 ➡️  ${3/$fromPath/$toPath}"
+                echoZipped "📃 $3 ➡️  ${3/$fromPath/$toPath}"
             else
-                echoZipped "🗄  $3 ➡️  ${3/$fromPath/$toPath}"
+                echoFile "🗄  $3 ➡️  ${3/$fromPath/$toPath}"
             fi
 
             # 按需移动
@@ -186,6 +186,7 @@ function file_archiver_in_path() {
         -o -name "*.git" -o -name "*.gitee" \
         -o -name "*.xcodeproj" -o -name "*.xcplugin" -o -name "*.podspec" \
         -o -name "pubspec.yaml" \
+        -o -name "index.html" \
         -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
         echoZipping "🗃  $3 ➡️  ${3/$fromPath/$toPath}_fa${DATE_STAMP}.zip"
 
