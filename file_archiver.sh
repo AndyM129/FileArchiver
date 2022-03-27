@@ -3,12 +3,15 @@
 # =========================================== COPYRIGHT ===========================================
 readonly SCRIPT_NAME="file_archiver.sh"                         # 脚本名称
 readonly SCRIPT_DESC="文件归档工具"                       # 脚本名称
-readonly SCRIPT_VERSION="1.1.0"                                 # 脚本版本
+readonly SCRIPT_VERSION="1.2.0"                                 # 脚本版本
 readonly SCRIPT_UPDATETIME="2022/03/14"                         # 最近的更新时间
 readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/27: v1.2.0
+* 支持添加 .faignore 以忽略对应目录
+
 ### 2022/03/20: v1.1.0
 * 支持智能归档后 备份至指定路径
 
@@ -140,26 +143,30 @@ process() {
 
 # 对传入的目录 进行智能归档 并按需移动：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
 function file_archiver_in_path() {
-    # 若需要忽略，则仅输出提示
+    # 若需要忽略，则仅输出提示：相册
     if [[ "$3" == *".photoslibrary" ]]; then
         echoIgnore "🏞  $3"
+
+    # 若需要忽略，则仅输出提示：其他
+    elif [ $(echo $(find "$1/$2" -name "*.faignore" -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
+        echoIgnore "⏭  $3"
 
     # 若是文件，则先按需创建目标目录 并复制到该目录，再按需删除原文件
     elif [ -f "$3" ]; then
         # 无需创建目录
         if [ $fromPath == $toPath ]; then
-            if [[ "$1" == *".zip" ]] || [[ "$1" == *".tar"* ]]; then
-                echoFile "📃 $3"
-            else
+            if [[ "$2" == *".zip" ]] || [[ "$2" == *".tar"* ]]; then
                 echoZipped "🗄  $3"
+            else
+                echoFile "📃 $3"
             fi
 
         # 需要创建目标目录
         else
-            if [[ "$1" == *".zip" ]] || [[ "$1" == *".tar"* ]]; then
-                echoZipped "📃 $3 ➡️  ${3/$fromPath/$toPath}"
+            if [[ "$2" == *".zip" ]] || [[ "$2" == *".tar"* ]]; then
+                echoZipped "🗄  $3 ➡️  ${3/$fromPath/$toPath}"
             else
-                echoFile "🗄  $3 ➡️  ${3/$fromPath/$toPath}"
+                echoFile "📃 $3 ➡️  ${3/$fromPath/$toPath}"
             fi
 
             # 按需移动
