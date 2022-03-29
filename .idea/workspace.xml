@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d13d33d3-4dbb-49b9-b318-717071dca174" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/file_archiver.sh" beforeDir="false" afterPath="$PROJECT_DIR$/file_archiver.sh" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/file_archiver_test.zip" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +62,7 @@
       <workItem from="1647263787326" duration="18686000" />
       <workItem from="1647593559794" duration="7920000" />
       <workItem from="1647755280894" duration="26035000" />
-      <workItem from="1648392210088" duration="2349000" />
+      <workItem from="1648392210088" duration="2556000" />
     </task>
     <servers />
   </component>
