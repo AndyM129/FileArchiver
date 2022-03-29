@@ -9,6 +9,9 @@ readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/27: v1.3.0
+* 控制台日志 添加时间显示
+
 ### 2022/03/27: v1.2.0
 * 支持添加 .faignore 以忽略对应目录
 
@@ -42,18 +45,18 @@ debug="0"
 
 # =========================================== GLOBAL FUNCTIONS ===========================================
 # 更多用法见：https://github.com/AndyM129/AMKShell/wiki/TipsForUse#%E9%A2%9C%E8%89%B2
-echoDebug() { if [[ $verbose == "1" || $debug == "1" ]]; then echo "\033[1;2m$@\033[0m"; fi; } # debug 级别最低，可以随意的使用于任何觉得有利于在调试时更详细的了解系统运行状态的东东；
-echoInfo() { echo "\033[1;36m$@\033[0m"; }                                                     # info  重要，输出信息：用来反馈系统的当前状态给最终用户的；
-echoSuccess() { echo "\033[1;32m$@\033[0m"; }                                                  # success 成功，输出信息：用来反馈系统的当前状态给最终用户的；
-echoWarn() { echo "\033[1;33m$@\033[0m"; }                                                     # warn, 可修复，系统可继续运行下去；
-echoError() { echo "\033[1;31m$@\033[0m"; }                                                    # error, 可修复性，但无法确定系统会正常的工作下去;
-echoFatal() { echo "\033[1;31m$@\033[0m"; }                                                    # fatal, 相当严重，可以肯定这种错误已经无法修复，并且如果系统继续运行下去的话后果严重。
+echoDebug() { if [[ $verbose == "1" || $debug == "1" ]]; then echo "\033[1;2m[$(date "+%Y/%m/%d %T")] $@\033[0m"; fi; } # debug 级别最低，可以随意的使用于任何觉得有利于在调试时更详细的了解系统运行状态的东东；
+echoInfo() { echo "\033[1;36m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                     # info  重要，输出信息：用来反馈系统的当前状态给最终用户的；
+echoSuccess() { echo "\033[1;32m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                  # success 成功，输出信息：用来反馈系统的当前状态给最终用户的；
+echoWarn() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                     # warn, 可修复，系统可继续运行下去；
+echoError() { echo "\033[1;31m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                    # error, 可修复性，但无法确定系统会正常的工作下去;
+echoFatal() { echo "\033[1;31m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                    # fatal, 相当严重，可以肯定这种错误已经无法修复，并且如果系统继续运行下去的话后果严重。
 
-echoFile() { echo "$@ "; }                       # 普通文件
-echoDir() { echo "\033[1;36m$@ \033[0m"; }       # 普通文件夹
-echoIgnore() { echo "\033[1;7m$@ \033[0m"; }     # 被忽略文件
-echoZipping() { echo "\033[1;33m$@ \033[0m"; }   # 待压缩文件夹
-echoZipped() { echo "\033[1;43;30m$@ \033[0m"; } # 已压缩文件夹
+echoFile() { echo "[$(date "+%Y/%m/%d %T")] $@ "; }                       # 普通文件
+echoDir() { echo "\033[1;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }       # 普通文件夹
+echoIgnore() { echo "\033[1;7m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 被忽略文件
+echoZipping() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }   # 待压缩文件夹
+echoZipped() { echo "\033[1;43;30m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 已压缩文件夹
 
 # =========================================== HELP ===========================================
 help() {
@@ -257,8 +260,8 @@ function file_archiver_in_path() {
 function remove_empty_dir() {
     dir="$1/$2"
     while true; do
-        if [ ! -e "$dir" ];then
-            break;
+        if [ ! -e "$dir" ]; then
+            break
         fi
 
         # 若是空目录，则删除
@@ -266,11 +269,11 @@ function remove_empty_dir() {
             echoDebug "🗑  $dir"
             rm -r "$dir"
             dir=$(dirname "$dir")
-            continue;
+            continue
         fi
 
         # 结束处理
-        break;
+        break
     done
 }
 
