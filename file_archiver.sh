@@ -4,15 +4,15 @@
 readonly SCRIPT_NAME="file_archiver.sh"                         # 脚本名称
 readonly SCRIPT_DESC="文件归档工具"                       # 脚本名称
 readonly SCRIPT_VERSION="1.3.1"                                 # 脚本版本
-readonly SCRIPT_UPDATETIME="2022/03/14"                         # 最近的更新时间
+readonly SCRIPT_UPDATETIME="2022/03/30"                         # 最近的更新时间
 readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
-### 2022/03/27: v1.3.1
+### 2022/03/30: v1.3.1
 * 智能归档优化：对于需要归档的文件夹，若其更新时间小于 其最近一次归档的时间，则不再重复归档
 
-### 2022/03/27: v1.3.0
+### 2022/03/29: v1.3.0
 * 控制台日志 添加时间显示
 
 ### 2022/03/27: v1.2.0
@@ -57,12 +57,9 @@ echoFatal() { echo "\033[1;31m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }            
 
 echoFile() { echo "[$(date "+%Y/%m/%d %T")] $@ "; }                     # 普通文件
 echoDir() { echo "\033[1;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 普通文件夹
-#echoIgnore() { echo "\033[1;46;100m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 被忽略文件
 echoIgnore() { echo "\033[1;90m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }  # 普通文件夹
-#echoIgnore() { echo "\033[7;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }    # 普通文件夹
 
 echoZipping() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 待压缩文件夹
-#echoZipped() { echo "\033[1;43;30m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 已压缩文件夹
 echoZipped() { echo "\033[4;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 待压缩文件夹
 
 # =========================================== HELP ===========================================
