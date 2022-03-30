@@ -3,12 +3,15 @@
 # =========================================== COPYRIGHT ===========================================
 readonly SCRIPT_NAME="file_archiver.sh"                         # 脚本名称
 readonly SCRIPT_DESC="文件归档工具"                       # 脚本名称
-readonly SCRIPT_VERSION="1.2.0"                                 # 脚本版本
+readonly SCRIPT_VERSION="1.3.1"                                 # 脚本版本
 readonly SCRIPT_UPDATETIME="2022/03/14"                         # 最近的更新时间
 readonly AUTHER_NAME="MengXinxin"                               # 作者
 readonly AUTHER_EMAIL="andy_m129@163.com"                       # 作者邮箱
 readonly REAMDME_URL="https://github.com/AndyM129/FileArchiver" # 说明文档
 readonly SCRIPT_UPDATE_LOG='''
+### 2022/03/27: v1.3.1
+* 智能归档优化：对于需要归档的文件夹，若其更新时间小于 其最近一次归档的时间，则不再重复归档
+
 ### 2022/03/27: v1.3.0
 * 控制台日志 添加时间显示
 
@@ -52,11 +55,15 @@ echoWarn() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }             
 echoError() { echo "\033[1;31m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                    # error, 可修复性，但无法确定系统会正常的工作下去;
 echoFatal() { echo "\033[1;31m[$(date "+%Y/%m/%d %T")] $@\033[0m"; }                                                    # fatal, 相当严重，可以肯定这种错误已经无法修复，并且如果系统继续运行下去的话后果严重。
 
-echoFile() { echo "[$(date "+%Y/%m/%d %T")] $@ "; }                       # 普通文件
-echoDir() { echo "\033[1;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }       # 普通文件夹
-echoIgnore() { echo "\033[1;7m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 被忽略文件
-echoZipping() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }   # 待压缩文件夹
-echoZipped() { echo "\033[1;43;30m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 已压缩文件夹
+echoFile() { echo "[$(date "+%Y/%m/%d %T")] $@ "; }                     # 普通文件
+echoDir() { echo "\033[1;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 普通文件夹
+#echoIgnore() { echo "\033[1;46;100m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }     # 被忽略文件
+echoIgnore() { echo "\033[1;90m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }  # 普通文件夹
+#echoIgnore() { echo "\033[7;36m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; }    # 普通文件夹
+
+echoZipping() { echo "\033[1;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 待压缩文件夹
+#echoZipped() { echo "\033[1;43;30m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 已压缩文件夹
+echoZipped() { echo "\033[4;33m[$(date "+%Y/%m/%d %T")] $@ \033[0m"; } # 待压缩文件夹
 
 # =========================================== HELP ===========================================
 help() {
@@ -110,7 +117,7 @@ process() {
     echoInfo "> 注释："
     echoFile "> 📃 表示「普通文件」"
     echoDir "> 📂 表示「普通文件夹」"
-    echoIgnore "> 📂 表示「特殊文件夹」，将被忽略归档"
+    echoIgnore "> 📂 表示「忽略文件夹」，如 特殊文件夹、已归档且无更新"
     echoZipping "> 🗃  表示「待归档文件夹」"
     echoZipped "> 🗄  表示「已归档文件」"
     echoInfo
@@ -133,7 +140,7 @@ process() {
     echoInfo
 
     # 执行结束
-    if [ $sof ]; then
+    if [ $kof ]; then
         echoSuccess "✅ 智能归档已完成，并保留了相关源文件！"
     elif [ $rof ]; then
         echoSuccess "✅ 智能归档已完成，并删除了相关源文件！"
@@ -198,28 +205,36 @@ function file_archiver_in_path() {
         -o -name "pubspec.yaml" \
         -o -name "index.html" \
         -maxdepth 1 | wc -l) | sed 's/ //g') -gt 0 ]; then
-        echoZipping "🗃  $3 ➡️  ${3/$fromPath/$toPath}_fa${DATE_STAMP}.zip"
 
-        # 归档文件夹
-        if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
-            # 前往对应的目录
-            cd "$1" || ! echo "前往目录失败($?)：$1" || exit 1
+        # 已归档 且无更新，则无需再次归档
+        if [ $(last_fa_timestamp $@) -gt $(last_update_timestamp $@) ]; then
+            echoIgnore "🗃  $3 ➡️  $(last_fa_file $@)"
 
-            # 就地进行归档
-            zip -qr "${2}_fa${DATE_STAMP}.zip" "$2" || ! echo "文件压缩失败($?)：$2" || exit 1
+        # 正常归档文件夹
+        else
+            echoZipping "🗃  $3 ➡️  ${3/$fromPath/$toPath}_fa${DATE_STAMP}.zip"
 
-            # 按需删除源文件
-            if [ $rof ]; then
-                rm -rf "$2"
+            # 归档文件夹
+            if [ $((${kof:-0} + ${rof:-0})) -gt 0 ]; then
+                # 前往对应的目录
+                cd "$1" || ! echo "前往目录失败($?)：$1" || exit 1
+
+                # 就地进行归档
+                zip -qr "${2}_fa${DATE_STAMP}.zip" "$2" || ! echo "文件压缩失败($?)：$2" || exit 1
+
+                # 按需删除源文件
+                if [ $rof ]; then
+                    rm -rf "$2"
+                fi
+
+                # 按需移动
+                if [ ! -e "$(dirname "${3/$fromPath/$toPath}")" ]; then
+                    mkdir -p "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "目录创建失败($?)：$(dirname "${3/$fromPath/$toPath}")" || exit 1
+                fi
+                cp "${2}_fa${DATE_STAMP}.zip" "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "文件移动失败($?)：${2}_fa${DATE_STAMP}.zip => $(dirname "${3/$fromPath/$toPath}")" || exit 1
+                rm -rf "${2}_fa${DATE_STAMP}.zip"
+                remove_empty_dir "$1"
             fi
-
-            # 按需移动
-            if [ ! -e "$(dirname "${3/$fromPath/$toPath}")" ]; then
-                mkdir -p "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "目录创建失败($?)：$(dirname "${3/$fromPath/$toPath}")" || exit 1
-            fi
-            cp "${2}_fa${DATE_STAMP}.zip" "$(dirname "${3/$fromPath/$toPath}")" || ! echoFatal "文件移动失败($?)：${2}_fa${DATE_STAMP}.zip => $(dirname "${3/$fromPath/$toPath}")" || exit 1
-            rm -rf "${2}_fa${DATE_STAMP}.zip"
-            remove_empty_dir "$1"
         fi
 
     # 空文件夹：按需备份，按需删除
@@ -275,6 +290,75 @@ function remove_empty_dir() {
         # 结束处理
         break
     done
+}
+
+# 上次更新的时间戳：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
+# "—— 修改时间：$(stat -f%c "$3") => $(date -r $(stat -f%c "$3") "+%Y-%m-%d %H:%M:%S")"
+function last_update_timestamp() {
+    echo $(stat -f%c "$3")
+}
+
+# 上次更新的日期戳：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
+# "—— 修改时间：$(stat -f%c "$3") => $(date -r $(stat -f%c "$3") "+%Y-%m-%d %H:%M:%S")"
+function last_update_date_stamp() {
+    echo $(date -r $(stat -f%c "$3") "+%Y-%m-%d %H:%M:%S")
+}
+
+# 上次归档的文件：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
+function last_fa_file() {
+    # 若目标文件夹 不存在，则直接返回
+    if [[ ! -e "${1/$fromPath/$toPath}" ]]; then
+        return
+    fi
+
+    # 返回搜搜结果
+    echo "$(find "${1/$fromPath/$toPath}" -name "${2}_fa2*.zip" -maxdepth 1 | sort | tail -n 1)"
+    return
+}
+
+# 上次归档的文件的时间戳：$1 源文件所在文件夹的完整路径（dirname），$2 源文件名称（basename），$3 源文件的完整路径
+function last_fa_timestamp() {
+    ############################################################################################################
+    #    #    完整思路如下：
+    #    #    Andys-MacBook-Pro-2018:B_1 mengxinxin$ find . -name "C_1_idea_fa2*.zip" -maxdepth 1
+    #    #    ./C_1_idea_fa20220329210602.zip
+    #    #    ./C_1_idea_fa20220329210639.zip
+    #    #    Andys-MacBook-Pro-2018:B_1 mengxinxin$ find . -name "C_1_idea_fa2*.zip" -maxdepth 1 | tail -n 1
+    #    #    ./C_1_idea_fa20220329210639.zip
+    #
+    #    lastUpdateTimestamp=$(stat -f%c "$3")                                 # 上次更新时间的 时间戳
+    #    lastUpdateDateStamp=$(date -r "$lastUpdateTimestamp" "+%Y%m%d%H%M%S") # 上次更新时间的 日期戳
+    #    lastFaFile=$(find "${1/$fromPath/$toPath}" -name "${2}_fa2*.zip" -maxdepth 1 | tail -n 1) # 上次归档的文件
+    #    lastFaFileName=$(basename "$lastFaFile")                                                  # 上次归档的 文件名
+    #    lastFaDateStamp=$(echo "$lastFaFileName" | grep -Eo "fa[0-9]{14}")                        # 上次归档的日期戳
+    #    lastFaDateStamp=${lastFaDateStamp#fa}
+    #    if [ -n "$lastFaDateStamp" ]; then
+    #        lastFaDateString="${lastFaDateStamp:0:4}-${lastFaDateStamp:4:2}-${lastFaDateStamp:6:2} ${lastFaDateStamp:8:2}:${lastFaDateStamp:10:2}:${lastFaDateStamp:12:2}"
+    #        lastFaTimestamp=$(date -j -f "%Y-%m-%d %H:%M:%S" "$lastFaDateString" +%s)
+    #        echoZipping "原文件最近修改时间：$lastUpdateDateStamp => $lastUpdateTimestamp"
+    #        echoZipping "最近备份时间：$lastFaFileName => $lastFaDateStamp => $lastFaDateString => $lastFaTimestamp"
+    #    fi
+    #    exit
+    ############################################################################################################
+
+    # 若没有 则直接返回
+    lastFaFile=$(last_fa_file $@) # 上次归档的文件
+    if [ -z "$lastFaFile" ]; then
+        return
+    fi
+
+    # 提取日期戳：若没有 则返回
+    lastFaFileName=$(basename "$lastFaFile")                           # 上次归档的文件 的名称
+    lastFaDateStamp=$(echo "$lastFaFileName" | grep -Eo "fa[0-9]{14}") # 上次归档的文件 的日期戳
+    lastFaDateStamp=${lastFaDateStamp#fa}
+    if [ -z "$lastFaDateStamp" ]; then
+        return
+    fi
+
+    # 将日期戳转成时间戳
+    lastFaDateString="${lastFaDateStamp:0:4}-${lastFaDateStamp:4:2}-${lastFaDateStamp:6:2} ${lastFaDateStamp:8:2}:${lastFaDateStamp:10:2}:${lastFaDateStamp:12:2}"
+    lastFaTimestamp=$(date -j -f "%Y-%m-%d %H:%M:%S" "$lastFaDateString" +%s)
+    echo "$lastFaTimestamp"
 }
 
 # =========================================== MAIN ===========================================
